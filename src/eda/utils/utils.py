@@ -272,6 +272,7 @@ def get_metric_subplots(class_labels:list, metric_dict: dict, metric_type: str, 
 
     filename = save_path+metric_type.replace(' ', '_')+'.png'
     plt.savefig(filename)
+    plt.close()
 
     return
 
@@ -340,6 +341,8 @@ def save_sample_frame_subplots(sample_rate_df: pd.DataFrame(), artifact_dir: str
     plt.legend(['min', 'avg'])
 
     plt.savefig(artifact_dir+'sample_frame_subplots.png')
+    plt.close()
+    return
 
 def get_label_to_int_mapping(class_labels:list)-> dict:
     """
@@ -572,4 +575,6 @@ def get_sample_spectrogram_subplot(labels_to_int:dict, files_to_keep:dict, index
         iterator += 1
     plt.savefig(artifacts_dir+filename)
     plt.close()
+
+    return
 
