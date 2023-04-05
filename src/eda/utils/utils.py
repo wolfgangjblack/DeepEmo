@@ -12,15 +12,17 @@ import pandas as pd
 import numpy as np
 import pandas as pd
 
-def check_artifacts_dir(save_path = './artifacts/'):
+def check_artifacts_dir(artifacts_dir:str ):
     '''
     This function checks if there is an artifacts dir in our root dir, 
     if not it'll create the aritifacts dir to prevent an error
+    Args:
+        artifacts_dir: a str representing a path -ex './artifacts/'
     '''
     try:
-         os.listdir(save_path)
+         os.listdir(artifacts_dir)
     except FileNotFoundError:
-        os.mkdir(save_path)
+        os.mkdir(artifacts_dir)
 
     return 
 
@@ -50,7 +52,7 @@ def get_files_to_ignore(data_dir:str, class_labels:list) -> dict:
         files_to_ignore[label] = bad
     
     return files_to_ignore
-ß
+
 def get_files_to_keep(data_dir:str, class_labels:list, files_to_ignore: dict) -> dict:
     """
     This function utilizes the files_to_ignore, which have filtered out all potential wav files that are not able to be processed. All files in this dictionary
@@ -76,6 +78,19 @@ def get_files_to_keep(data_dir:str, class_labels:list, files_to_ignore: dict) ->
         files_to_keep[label] = temp_file_list
     
     return files_to_keep
+
+def save_files_to_keep(files_to_keep:dict, artifacts_dir: str):
+    flat_list = []
+    for key in files_to_keep:
+        for file in files_to_keep[key]:
+            flat_list.append(file)
+
+    f = open(artifacts_dir+'files_to_keep.txt', 'w')
+    for path in flat_list:
+        f.write(path+'\n')
+    f.close()
+    return
+
 
 def get_native_sample_rates(data_dir:str, class_labels:list, files_to_ignore:dict) -> dict:
     """
@@ -312,7 +327,7 @@ def save_sample_frame_subplots(sample_rate_df: pd.DataFrame(), artifact_dir: str
         a matplotlib subplot
     """
     fig = plt.figure(figsize = (10, 10))
-    ax =plt.subplot(2, 2, 1))
+    ax =plt.subplot(2, 2, 1)
     ax.set_title('Sample Rates')
     plt.plot(sample_rate_df['quantile'].to_list(), sample_rate_df['min_sample_rates'].to_list(), 'r--')
     plt.plot(sample_rate_df['quantile'].to_list(), sample_rate_df['avg_sample_rates'].to_list(), 'b--')
@@ -325,3 +340,236 @@ def save_sample_frame_subplots(sample_rate_df: pd.DataFrame(), artifact_dir: str
     plt.legend(['min', 'avg'])
 
     plt.savefig(artifact_dir+'sample_frame_subplots.png')
+
+def get_label_to_int_mapping(class_labels:list)-> dict:
+    """
+    This function exists to repeatedly and easily generate a label to integer mapping.
+    Args: 
+        class_labels: a list containing the class labels - ex: ['happy', 'sad']
+    Output
+        labels_to_int: a dictionary containing the class labels as keys and an assigned int as values
+    """
+    labels_to_int = {}
+    labels = sorted(class_labels)
+    lab_int = 0
+    for label in labels:
+        labels_to_int[label] = lab_int
+        lab_int += 1
+    return labels_to_int
+
+def load_wav_output_mono_channel_file(filename:str, sample_rate_out:int)-> tf.Tensor:
+    """
+    This function takes a filename, which is the full path of a specific .wav file, then decodes that file 
+    to find the tensor associated with the sound - this is later used to get the spectrograms
+    Args:
+        filename: a full relative path represented by a str to a .wav file - ex "../../data/Happy/happymale.wav"
+        sample_rate_out: an int, the intended sample rate post conversion -ex 16000
+    Outputs:
+        wav: a tf.Tensor containing an array representing the audio file 
+    """
+    #load encoded wav file
+    file_contents = tf.io.read_file(filename)
+    
+    #Decode wav (tensors by channel)
+    wav, sample_rate = tf.audio.decode_wav(file_contents, desired_channels = 1)
+
+    #Remove trailing axis
+    wav = tf.squeeze(wav, axis = -1)
+    sample_rate = tf.cast(sample_rate, dtype = tf.int64)
+
+    #Goes from 44100Hz to 16000Hz - amplitude of the audio signal 
+    wav = tfio.audio.resample(wav, rate_in = sample_rate, rate_out = sample_rate_out)
+
+    return wav
+
+def get_sample_wav_subplot(labels_to_int:dict, files_to_keep:dict, index:int, sample_rate:int, artifacts_dir:str):
+    """
+    This function takes an index common to all labels within the files_to_keep dictionary and generates a wav 
+    subplot, saving the entire thing in artifacts with the sample rate and index recorded.
+
+    Args:
+        labels_to_int: a dictionary mapping string labels to integers, used in wav_to_spectrogram -ex {'Angry': 0, 'Happy': 1, ...}
+        files_to_keep: 
+        index: an int meant to denote which value in the files_to_keep key, value pairs will be plotted as a spectrogram - ex: 0
+        sample_rate: an int, the intended sample rate post conversion -ex 16000
+        artifacts_dir: a string path pointing to a directory meant for artifacts -ex './artifacts/'
+    Output:
+        A  subplot of wavs at some index per class label
+    """
+    nrows = len(labels_to_int.keys())
+    iterator = 1
+    plt.figure(figsize = (20, 10*nrows))
+    plt.tight_layout
+    for key in labels_to_int.keys():
+        wav = load_wav_output_mono_channel_file(files_to_keep[key][index], sample_rate)
+        ax = plt.subplot(nrows, 1, iterator)
+        ax.set_title(files_to_keep[key][index])
+        plt.plot(wav)
+        iterator += 1
+    filename = 'sample_wav_subplot_with_index_{0}_and_{1}_sample_rate.png'.format(index, sample_rate)
+
+    plt.savefig(artifacts_dir+filename)
+    plt.close()
+    return
+
+def wav_to_spectrogram(filename:str, sample_rate_out:int, label:int, frames: int) -> tuple[tf.Tensor, int]:
+    '''
+    This function reads in a single file path, a label (as an int), and the desired output max frame count 
+    to produce a spectrogram. This will be used in tf.data.Dataset.map() to convert filepaths into 
+    spectrograms after the data has been groupped together
+    Args:
+        filename: a full relative path represented by a str to a .wav file - ex "../../data/Happy/happymale.wav"
+        sample_rate_out: an int, the intended sample rate post conversion -ex 16000
+        label: an int meant to map from string label to int - ex: 'Happy' -> 0, for modeling maps will be made explicit
+        frames: an int, the max frames to be comsidered. Both frames and sample_rate_out are from quantile analysis
+    Output
+        spectrogram: a tf.Tensor that has been comverted from a wav to a zero_padded tensor representing a spectrogram
+        label: an int meant to map from string label to int - ex: 'Happy' -> 0, for modeling maps will be made explicit
+    
+    Note: label is repeated for the output so it can be used in the .map() method
+
+    '''
+    wav = load_wav_output_mono_channel_file(filename, sample_rate_out)
+    
+    ##Select as much wav as fills frames, if len(wav) < frames, this will be less than frames and will need padding
+    wav = wav[:frames]
+
+    ##Calculate the number of zeros for padding, note if the wav >= frames, this will be empty
+    
+    zero_padding = tf.zeros([frames] - tf.shape(wav), dtype = tf.float32)
+
+    ##Add zeros at the start IF the wav length < frames
+    wav = tf.concat([zero_padding, wav], 0)
+
+    #use short time fourier transform
+    spectrogram = tf.signal.stft(wav, frame_length = 320, frame_step = 32)
+
+    #Get the magnitude of the signal (los direction)
+    spectrogram = tf.abs(spectrogram)
+
+    #Adds a second dimension 
+    spectrogram = tf.expand_dims(spectrogram, axis = 2)
+
+    return spectrogram, label
+
+def power_to_db(S, amin=1e-16, top_db=80.0):
+    """Convert a power-spectrogram (magnitude squared) to decibel (dB) units.
+    Computes the scaling ``10 * log10(S / max(S))`` in a numerically
+    stable way.
+    Based on:
+    https://librosa.github.io/librosa/generated/librosa.core.power_to_db.html
+    """
+    def _tf_log10(x):
+        numerator = tf.math.log(x)
+        denominator = tf.math.log(tf.constant(10, dtype=numerator.dtype))
+        return numerator / denominator
+    
+    # Scale magnitude relative to maximum value in S. Zeros in the output 
+    # correspond to positions where S == ref.
+    ref = tf.reduce_max(S)
+
+    log_spec = 10.0 * _tf_log10(tf.maximum(amin, S))
+    log_spec -= 10.0 * _tf_log10(tf.maximum(amin, ref))
+
+    log_spec = tf.maximum(log_spec, tf.reduce_max(log_spec) - top_db)
+
+    return log_spec
+
+def wav_to_mels_spectrogram(filepath:str, sample_rate: int, label:int, frames:int) -> tuple[tf.Tensor, int]:
+    '''
+    This function reads in a signle file path, a label, and the desired output max frame count to produce a spectrogram. 
+    This will be used in tf.data.Dataset.map() to convert filepaths into mels spectrograms after the data has been 
+    groupped together A Mels Spectrogram is a variant of the spectrogram that is obtained by applying a mel scale to the 
+    frequency axis.  The mel scale is a perceptual scale of pitches that is based on how humans perceive sound. 
+    Mel spectrograms are useful because they allow the representation of audio signals in a way that is more aligned with 
+    human perception of sound.
+    Args:
+        filepath: a full relative path represented by a str to a .wav file - ex "../../data/Happy/happymale.wav"
+        sample_rate_out: an int, the intended sample rate post conversion -ex 16000
+        label: an int meant to map from string label to int - ex: 'Happy' -> 0, for modeling maps will be made explicit
+        frames: an int, the max frames to be comsidered. Both frames and sample_rate_out are from quantile analysis
+    Output
+        log_magnitude_mel_spectrograms: a tf.Tensor that has been comverted from a wav to a zero_padded tensor representing a spectrogram
+        label: an int meant to map from string label to int - ex: 'Happy' -> 0, for modeling maps will be made explicit
+    
+     Note: label is repeated for the output so it can be used in the .map() method'''
+
+    wav = load_wav_output_mono_channel_file(filepath, sample_rate)
+    
+    ##Select as much wav as fills frames, if len(wav) < frames, this will be less than frames and will need padding
+    wav = wav[:frames]
+
+    ##Calculate the number of zeros for padding, note if the wav >= frames, this will be empty
+    
+    zero_padding = tf.zeros([frames] - tf.shape(wav), dtype = tf.float32)
+
+    ##Add zeros at the start IF the wav length < frames
+    wav = tf.concat([zero_padding, wav], 0)
+
+    #use short time fourier transform
+    spectrogram = tf.signal.stft(wav,
+     frame_length = 320, ##This is fft_size
+     frame_step = 32 ## this is hop_size
+        ) #
+
+    #Get the magnitude of the signal (los direction)
+    spectrogram = tf.abs(spectrogram)
+    
+    mel_filter = tf.signal.linear_to_mel_weight_matrix(
+        num_mel_bins=100,
+        num_spectrogram_bins = 257,
+        sample_rate=frames,
+        lower_edge_hertz=frames/100,
+        upper_edge_hertz=frames/2,
+        dtype=tf.dtypes.float32)
+
+    mel_power_spectrogram = tf.matmul(tf.square(spectrogram), mel_filter)
+
+    log_magnitude_mel_spectrograms = power_to_db(mel_power_spectrogram)
+
+    log_magnitude_mel_spectrograms = tf.expand_dims(log_magnitude_mel_spectrograms, axis = 2)
+
+    return log_magnitude_mel_spectrograms, label
+
+def get_sample_spectrogram_subplot(labels_to_int:dict, files_to_keep:dict, index:int, sample_rate:int, frames:int, spec_type:str, artifacts_dir:str):
+    """
+    This function takes an index common to all labels within the files_to_keep dictionary and generates a spectrogram on the spectrogram
+    subplot, saving the entire thing in artifacts with the sample rate, frames, and index recorded. This can produce either base spectrogram
+    or mel spectrogram subplots depending on the specification in spec
+    Args:
+        labels_to_int: a dictionary mapping string labels to integers, used in wav_to_spectrogram -ex {'Angry': 0, 'Happy': 1, ...}
+        files_to_keep: 
+        index: an int meant to denote which value in the files_to_keep key, value pairs will be plotted as a spectrogram - ex: 0
+        sample_rate: an int, the intended sample rate post conversion -ex 16000
+        frames: an int, the max frames to be comsidered. Both frames and sample_rate_out are from quantile analysis -ex 43360
+        spec_type: a str meant to be either "spec" or "mels", if this is undefined the program will automatically assign spec
+        artifacts_dir: a string path pointing to a directory meant for artifacts -ex './artifacts/'
+    Output:
+        A spectrogram subplot
+    """
+    nrows = len(labels_to_int.keys())
+    iterator = 1
+    plt.figure(figsize = (20, 30))
+    plt.tight_layout
+
+    ##Verify spec_type is correctly assigned
+    if spec_type not in ['spec', 'mels']:
+        print("spec_type not recognized, assigning spec")
+        spec_type = 'spec'
+
+    for key in labels_to_int.keys():
+        if spec_type == 'spec':
+            spec, _ = wav_to_spectrogram(files_to_keep[key][index], sample_rate,labels_to_int[key],frames)
+            filename = 'sample_spectrogram_subplot_with_index_{0}_{1}_sample_rate_and_{2}_frames.png'.format(index, sample_rate, frames)
+
+        else:
+            spec, _ = wav_to_mels_spectrogram(files_to_keep[key][index], sample_rate,labels_to_int[key],frames)
+            filename = 'sample_mels_spectr_subplot_with_index_{0}_{1}_sample_rate_and_{2}_frames.png'.format(index, sample_rate, frames)
+
+        ax = plt.subplot(nrows, 1, iterator)
+        ax.set_title(files_to_keep[key][index])
+        plt.imshow(tf.reshape(spec, [spec.shape[1], spec.shape[0]]))
+        iterator += 1
+    plt.savefig(artifacts_dir+filename)
+    plt.close()
+
