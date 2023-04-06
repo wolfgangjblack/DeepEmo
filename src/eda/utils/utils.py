@@ -11,6 +11,8 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import pandas as pd
+import librosa
+import librosa.display
 
 def check_artifacts_dir(artifacts_dir:str ):
     '''
@@ -28,13 +30,15 @@ def check_artifacts_dir(artifacts_dir:str ):
 
 def get_files_to_ignore(data_dir:str, class_labels:list) -> dict:
     """
-    This function checks all of the data in each class labels data-subdirectory to verify that the files can be provessed by tf.audio.decode_wav.
-    This is a minimum requirement to be processed and used in the model. It will return a dictionary of files that WILL BE EXCLUDED from analysis and modeling efforts.
+    This function checks all of the data in each class labels data-subdirectory to verify that the files can be provessed
+     by tf.audio.decode_wav. This is a minimum requirement to be processed and used in the model. It will return a
+      dictionary of files that WILL BE EXCLUDED from analysis and modeling efforts.
     Args:
         data_dir: the master data directory -ex: '../data'
         class_labels: a list containing the class labels - ex: ['happy', 'sad']
     Output:
-        files_to_ignore: a dictionary containing key, values pairs where keys are the class label and the values are lists of full filepaths to ignore within that key
+        files_to_ignore: a dictionary containing key, values pairs where keys are the class label and the values are lists
+         of full filepaths to ignore within that key
     """
     files_to_ignore = {}
     for label in class_labels:
@@ -55,14 +59,16 @@ def get_files_to_ignore(data_dir:str, class_labels:list) -> dict:
 
 def get_files_to_keep(data_dir:str, class_labels:list, files_to_ignore: dict) -> dict:
     """
-    This function utilizes the files_to_ignore, which have filtered out all potential wav files that are not able to be processed. All files in this dictionary
-    will be included in the modeling and analysis.
+    This function utilizes the files_to_ignore, which have filtered out all potential wav files that are not able to be
+     processed. All files in this dictionary will be included in the modeling and analysis.
     Args:
         data_dir: the master data directory -ex: '../data'
         class_labels: a list containing the class labels - ex: ['happy', 'sad']
-        files_to_ignore: a dictionary containing key, values pairs where keys are the class label and the values are lists of full filepaths to ignore within that key
+        files_to_ignore: a dictionary containing key, values pairs where keys are the class label and the values are
+         lists of full filepaths to ignore within that key
     Output:
-        files_to_keep: a dictionary containing key, values pairs where keys are the class label and the values are lists of full filepaths
+        files_to_keep: a dictionary containing key, values pairs where keys are the class label and the values are
+         lists of full filepaths
     """
     files_to_keep = {}
     for label in class_labels:
@@ -94,21 +100,21 @@ def save_files_to_keep(files_to_keep:dict, artifacts_dir: str):
 
 def get_native_sample_rates(data_dir:str, class_labels:list, files_to_ignore:dict) -> dict:
     """
-    This function finds the native sample rate of each viable file and saves that value to a list per label in class label. 
-    These labels and lists are then saved in a dictionary as a key, value pair. 
+    This function finds the native sample rate of each viable file and saves that value to a list per label in class
+     label. These labels and lists are then saved in a dictionary as a key, value pair. 
 
-    The native sample rate is important as we move to standardize the file lengths/output rates. If we choose to small a 
-    sample rate we'll end up majorly downsampling our data and potentially missing values, if we choose too large a sample 
-    rate we'll end up potentially over sampling features as we scale up the sample rate. 
+    The native sample rate is important as we move to standardize the file lengths/output rates. If we choose to
+     small a sample rate we'll end up majorly downsampling our data and potentially missing values, if we choose too
+      large a sample rate we'll end up potentially over sampling features as we scale up the sample rate. 
     
     Args:
         data_dir: the master data directory -ex: '../data'
         class_labels: a list containing the class labels - ex: ['happy', 'sad']
-        files_to_ignore: a dictionary containing key, values pairs where keys are the class labels and the values are lists 
-                of full filepaths to ignore within that key -ex: {'happy': ['../data/happy/a_sentence.wav', ...], ...}
+        files_to_ignore: a dictionary containing key, values pairs where keys are the class labels and the values are
+         lists of full filepaths to ignore within that key -ex: {'happy': ['../data/happy/a_sentence.wav', ...], ...}
     Output:
-        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values are lists
-                of native_sample_rates as found by tf.audio.decode_wav
+        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values
+         are lists of native_sample_rates as found by tf.audio.decode_wav
 
 
     Notes: 
@@ -141,11 +147,13 @@ def get_native_sample_rates(data_dir:str, class_labels:list, files_to_ignore:dic
 
 def get_avg_sample_rate_by_quantile(native_sample_rates: dict, quantile: float)-> int:
     """
-    This function returns the suggested avg sample rather which will cover 1-quantile % of the data across all labels (keys).
+    This function returns the suggested avg sample rather which will cover 1-quantile % of the data across all labels
+     (keys).
     Args:
-        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values are lists
-                of native_sample_rates as found by tf.audio.decode_wav
-        quantile: a float between 0 and 1, restricted to quantiles (0.1, .2, .3, ...) which denotes the range of data covered by the calculation
+        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values
+         are lists of native_sample_rates as found by tf.audio.decode_wav
+        quantile: a float between 0 and 1, restricted to quantiles (0.1, .2, .3, ...) which denotes the range of data
+         covered by the calculation
     Output:
         avg_sample_rate: an int meant to be used in wav to spectrogram conversions. 
 
@@ -161,11 +169,13 @@ def get_avg_sample_rate_by_quantile(native_sample_rates: dict, quantile: float)-
 
 def get_min_sample_rate_by_quantile(native_sample_rates: dict, quantile: float)-> int:
     """
-    This function returns the suggested min sample rather which will cover 1-quantile % of the data across all labels (keys).
+    This function returns the suggested min sample rather which will cover 1-quantile % of the data across all labels
+     (keys).
     Args:
-        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values are lists
-                of native_sample_rates as found by tf.audio.decode_wav
-        quantile: a float between 0 and 1, restricted to quantiles (0.1, .2, .3, ...) which denotes the range of data covered by the calculation
+        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values
+         are lists of native_sample_rates as found by tf.audio.decode_wav
+        quantile: a float between 0 and 1, restricted to quantiles (0.1, .2, .3, ...) which denotes the range of data
+         covered by the calculation
     Output:
         min_sample_rate: an int meant to be used in wav to spectrogram conversions. 
 
@@ -183,18 +193,18 @@ def get_min_sample_rate_by_quantile(native_sample_rates: dict, quantile: float)-
 
 def get_wav_lengths(data_dir:str, class_labels:list, files_to_ignore:dict, sample_rate_out: int) -> dict:
     """
-    This function finds the native sample rate of each viable file and saves that value to a list per label in class label. 
-    These labels and lists are then saved in a dictionary as a key, value pair. 
+    This function finds the native sample rate of each viable file and saves that value to a list per label in class
+     label. These labels and lists are then saved in a dictionary as a key, value pair. 
 
-    The native sample rate is important as we move to standardize the file lengths/output rates. If we choose to small a 
-    sample rate we'll end up majorly downsampling our data and potentially missing values, if we choose too large a sample 
-    rate we'll end up potentially over sampling features as we scale up the sample rate. 
+    The native sample rate is important as we move to standardize the file lengths/output rates. If we choose to small
+     a sample rate we'll end up majorly downsampling our data and potentially missing values, if we choose too large a
+      sample rate we'll end up potentially over sampling features as we scale up the sample rate. 
     
     Args:
         data_dir: the master data directory -ex: '../data'
         class_labels: a list containing the class labels - ex: ['happy', 'sad']
-        files_to_ignore: a dictionary containing key, values pairs where keys are the class labels and the values are lists 
-                of full filepaths to ignore within that key -ex: {'happy', ['../data/happy/a_sentence.wav', ...], ...}
+        files_to_ignore: a dictionary containing key, values pairs where keys are the class labels and the values are
+         lists of full filepaths to ignore within that key -ex: {'happy', ['../data/happy/a_sentence.wav', ...], ...}
     Output:
         lengths: a dictionary containing key, value pairs where keys are the class labels and the values are lists
                 of lengths for the resampled tensors produced by tfio.audio.resample
@@ -231,7 +241,8 @@ def get_metric_subplots(class_labels:list, metric_dict: dict, metric_type: str, 
     barplots across all labels. 
     Arg: 
         class_labels: a list containing the class labels - ex: ['happy', 'sad']
-        metric_dict: a dictionary containing key,value pairs for all class labels and a specified metric - ex: lengths = {'happy': ['1224224', ...],...}
+        metric_dict: a dictionary containing key,value pairs for all class labels and a specified metric -
+         ex: lengths = {'happy': ['1224224', ...],...}
         metric_type: a human readable string used in the title of subplots and in the saved artifact name
         save_path: a path str where the subplot artifact will be saved -ex "./artifacts/"
     Output:
@@ -284,12 +295,13 @@ def get_sample_frame_df(quantiles: list, native_sample_rates: dict, lengths: dic
     frames for spectrogram conversion. 
     Args: 
         quantiles: a list of quantiles - ex: [i/10 for i in range(1, 10)]
-        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values are lists
-                of native_sample_rates as found by tf.audio.decode_wav
+        native_sample_rates: a dictionary containing key, value pairs where keys are the class labels and the values
+         are lists of native_sample_rates as found by tf.audio.decode_wav
         lengths: a dictionary containing key, value pairs where keys are the class labels and the values are lists
                 of lengths for the resampled tensors produced by tfio.audio.resample
     Outputs:
-        data: a pd.DataFrame() containing columns for min and average sample rates and frames to be used at each quantile
+        data: a pd.DataFrame() containing columns for min and average sample rates and frames to be used at each
+         quantile
     """
     min_sample_rates = []
     avg_sample_rates = []
@@ -322,7 +334,8 @@ def save_sample_frame_subplots(sample_rate_df: pd.DataFrame(), artifact_dir: str
     """
     This function saves off the sample rates and frame rates found at quantiles as graphs for later review
     Args:
-        sample_rate_df: pd.DataFrame() containing columns for min and average sample rates and frames to be used at each quantile
+        sample_rate_df: pd.DataFrame() containing columns for min and average sample rates and frames to be
+         used at each quantile
         artifact_dir: a string path pointing to a directory meant for artifacts
     Output:
         a matplotlib subplot
@@ -350,7 +363,8 @@ def get_label_to_int_mapping(class_labels:list)-> dict:
     Args: 
         class_labels: a list containing the class labels - ex: ['happy', 'sad']
     Output
-        labels_to_int: a dictionary containing the class labels as keys and an assigned int as values
+        labels_to_int: a dictionary containing the class labels as keys and an assigned int as
+         values
     """
     labels_to_int = {}
     labels = sorted(class_labels)
@@ -362,10 +376,11 @@ def get_label_to_int_mapping(class_labels:list)-> dict:
 
 def load_wav_output_mono_channel_file(filename:str, sample_rate_out:int)-> tf.Tensor:
     """
-    This function takes a filename, which is the full path of a specific .wav file, then decodes that file 
-    to find the tensor associated with the sound - this is later used to get the spectrograms
+    This function takes a filename, which is the full path of a specific .wav file, then decodes
+     that file to find the tensor associated with the sound - this is later used to get the spectrograms
     Args:
-        filename: a full relative path represented by a str to a .wav file - ex "../../data/Happy/happymale.wav"
+        filename: a full relative path represented by a str to a .wav file -
+         ex "../../data/Happy/happymale.wav"
         sample_rate_out: an int, the intended sample rate post conversion -ex 16000
     Outputs:
         wav: a tf.Tensor containing an array representing the audio file 
@@ -391,9 +406,11 @@ def get_sample_wav_subplot(labels_to_int:dict, files_to_keep:dict, index:int, sa
     subplot, saving the entire thing in artifacts with the sample rate and index recorded.
 
     Args:
-        labels_to_int: a dictionary mapping string labels to integers, used in wav_to_spectrogram -ex {'Angry': 0, 'Happy': 1, ...}
+        labels_to_int: a dictionary mapping string labels to integers, used in wav_to_spectrogram -
+         ex {'Angry': 0, 'Happy': 1, ...}
         files_to_keep: 
-        index: an int meant to denote which value in the files_to_keep key, value pairs will be plotted as a spectrogram - ex: 0
+        index: an int meant to denote which value in the files_to_keep key, value pairs will be plotted as a
+         spectrogram - ex: 0
         sample_rate: an int, the intended sample rate post conversion -ex 16000
         artifacts_dir: a string path pointing to a directory meant for artifacts -ex './artifacts/'
     Output:
@@ -407,13 +424,123 @@ def get_sample_wav_subplot(labels_to_int:dict, files_to_keep:dict, index:int, sa
         wav = load_wav_output_mono_channel_file(files_to_keep[key][index], sample_rate)
         ax = plt.subplot(nrows, 1, iterator)
         ax.set_title(files_to_keep[key][index])
-        plt.plot(wav)
+        librosa.display.waveshow(wav.numpy(), sr = sample_rate)
         iterator += 1
     filename = 'sample_wav_subplot_with_index_{0}_and_{1}_sample_rate.png'.format(index, sample_rate)
 
     plt.savefig(artifacts_dir+filename)
     plt.close()
     return
+
+def add_noise_to_wav(wav: tf.Tensor)-> tf.Tensor:
+    """
+    This function was adapted from https://www.kaggle.com/code/shivamburnwal/speech-emotion-recognition
+    and adds noise to the processed wav. This will eventually be used in data augmentation for modeling
+    Args:
+        wav: a tf.Tensor representing the audio file
+    Output:
+        wav: a tf.Tensor + some randomly generated noise representing the changed wav
+    """
+    wav = wav.numpy()
+    noise_amp = 0.05*np.random.uniform()*np.amax(wav)
+    wav = wav+noise_amp*np.random.normal(size = wav.shape[0])
+    wav = tf.convert_to_tensor(wav)
+    return wav
+
+def stretch_wav(wav:tf.Tensor, rate:float) -> np.ndarray:
+    """
+    This function was adapted from https://www.kaggle.com/code/shivamburnwal/speech-emotion-recognition
+    and stretches the original wav. This will eventually be used in data augmentation for modeling.
+    Args:
+        wav: a tf.Tensor representing the audio file
+    Output:
+        wav: a tf.Tensor with augmented frequency space of the original wav
+
+    Note: the purpose of this function is to either stretch or shrink the features found in the amplitude
+    space across the frequency space
+    """
+    length = wav.shape[0]
+    temp_wav = tf.convert_to_tensor(librosa.effects.time_stretch(wav.numpy(), rate =rate))
+     ##Select as much wav as fills frames, if len(wav) < frames, this will be less than frames and will need padding
+    temp_wav = temp_wav[:length]
+
+    ##Calculate the number of zeros for padding, note if the wav >= frames, this will be empty
+    
+    zero_padding = tf.zeros([length] - tf.shape(temp_wav), dtype = tf.float32)
+
+    ##Add zeros at the start IF the wav length < frames
+    temp_wav = tf.concat([zero_padding, temp_wav], 0)
+
+    return temp_wav
+
+def change_pitch(wav:tf.Tensor, sampling_rate: int, n_steps: int) -> np.ndarray:
+    """
+    This function was adapted from https://www.kaggle.com/code/shivamburnwal/speech-emotion-recognition
+    and changes the pitch of the original wav. This will eventually be used in data augmentation for
+    modeling.
+    Args:
+        wav: a tf.Tensor representing the audio file
+    Output:
+        wav: a tf.Tensor at a different pitch from the original audio file
+
+    Note: the n_steps should be selected careful, see librosa documentation for guidance
+    """
+    return tf.convert_to_tensor(librosa.effects.pitch_shift(wav.numpy(), sr= sampling_rate, n_steps = n_steps))
+
+def get_sample_augmented_wav_subplot(filename: str, sample_rate: int,strech_rate_lt_one: float,strech_rate_gt_one: float,
+n_steps_pos: int,n_steps_neg: int,artifacts_dir:str):
+    """
+    This function takes an index common to all labels within the files_to_keep dictionary and generates a wav 
+    subplot, saving the entire thing in artifacts with the sample rate and index recorded.
+
+    Args:
+        filename: a full filename and path to be plotted
+        sample_rate: an int, the intended sample rate post conversion -ex 16000
+        stretch_rate_lt_one: a float meant to be less than one, the signal is slowed down - stretching the
+         amplitudes across the frequencies (and losing some of the signal)
+        stretch_rate_gt_one: a float meant to be greater than one, the signal is sped up - shrinking the
+         amplitdues across the frequencies
+        n_steps_pos: a positive int meant to represent fraction steps shifted UP (higher pitch)
+        n_steps_neg: a negative int meant to represent fraction steps shifted DOWN (Lower pitch)
+        artifacts_dir: a string path pointing to a directory meant for artifacts -ex './artifacts/'
+    Output:
+        A  subplot of wavs at some index per class label
+    """
+    wav = load_wav_output_mono_channel_file(filename, sample_rate)
+
+    filename=filename.split('data/')[-1].replace('/', '_')
+    savename = filename+'_wav_and_data_augmentations'
+    nrows = 6
+    plt.figure(figsize=(10, 30))
+    plt.tight_layout
+    plt.suptitle(savename)
+
+    ax = plt.subplot(nrows, 1, 1)
+    librosa.display.waveshow(wav.numpy(), sr = sample_rate)
+    ax.set_title('Normal wav')
+
+    ax = plt.subplot(nrows, 1, 2)
+    librosa.display.waveshow(add_noise_to_wav(wav).numpy(), sr = sample_rate)
+    ax.set_title('Noisy wav')
+
+    ax = plt.subplot(nrows, 1, 3)
+    librosa.display.waveshow(stretch_wav(wav, strech_rate_lt_one).numpy(), sr = sample_rate)
+    ax.set_title('stretched wav with rate {}'.format(strech_rate_lt_one))
+
+    ax = plt.subplot(nrows, 1, 4)
+    librosa.display.waveshow(stretch_wav(wav, strech_rate_gt_one).numpy(), sr = sample_rate)
+    ax.set_title('stretched wav with rate {}'.format(strech_rate_gt_one))
+
+    ax = plt.subplot(nrows, 1, 5)
+    librosa.display.waveshow(change_pitch(wav, sample_rate, n_steps_pos).numpy(), sr = sample_rate)
+    ax.set_title('pitched wav with nsteps {}'.format(n_steps_pos))
+
+    ax = plt.subplot(nrows, 1, 6)
+    librosa.display.waveshow(change_pitch(wav, sample_rate, n_steps_neg).numpy(), sr = sample_rate)
+    ax.set_title('pitched wav with nsteps {}'.format(n_steps_neg))
+
+    plt.savefig(artifacts_dir+savename+'.png')
+    plt.close()
 
 def wav_to_spectrogram(filename:str, sample_rate_out:int, label:int, frames: int) -> tuple[tf.Tensor, int]:
     '''
@@ -445,38 +572,12 @@ def wav_to_spectrogram(filename:str, sample_rate_out:int, label:int, frames: int
     wav = tf.concat([zero_padding, wav], 0)
 
     #use short time fourier transform
-    spectrogram = tf.signal.stft(wav, frame_length = 320, frame_step = 32)
+    spectrogram = librosa.stft(wav.numpy(), hop_length=32, win_length=320) 
 
     #Get the magnitude of the signal (los direction)
-    spectrogram = tf.abs(spectrogram)
+    spectrogram =librosa.amplitude_to_db(abs(spectrogram))
 
-    #Adds a second dimension 
-    spectrogram = tf.expand_dims(spectrogram, axis = 2)
-
-    return spectrogram, label
-
-def power_to_db(S, amin=1e-16, top_db=80.0):
-    """Convert a power-spectrogram (magnitude squared) to decibel (dB) units.
-    Computes the scaling ``10 * log10(S / max(S))`` in a numerically
-    stable way.
-    Based on:
-    https://librosa.github.io/librosa/generated/librosa.core.power_to_db.html
-    """
-    def _tf_log10(x):
-        numerator = tf.math.log(x)
-        denominator = tf.math.log(tf.constant(10, dtype=numerator.dtype))
-        return numerator / denominator
-    
-    # Scale magnitude relative to maximum value in S. Zeros in the output 
-    # correspond to positions where S == ref.
-    ref = tf.reduce_max(S)
-
-    log_spec = 10.0 * _tf_log10(tf.maximum(amin, S))
-    log_spec -= 10.0 * _tf_log10(tf.maximum(amin, ref))
-
-    log_spec = tf.maximum(log_spec, tf.reduce_max(log_spec) - top_db)
-
-    return log_spec
+    return tf.convert_to_tensor(spectrogram), label
 
 def wav_to_mels_spectrogram(filepath:str, sample_rate: int, label:int, frames:int) -> tuple[tf.Tensor, int]:
     '''
@@ -492,7 +593,8 @@ def wav_to_mels_spectrogram(filepath:str, sample_rate: int, label:int, frames:in
         label: an int meant to map from string label to int - ex: 'Happy' -> 0, for modeling maps will be made explicit
         frames: an int, the max frames to be comsidered. Both frames and sample_rate_out are from quantile analysis
     Output
-        log_magnitude_mel_spectrograms: a tf.Tensor that has been comverted from a wav to a zero_padded tensor representing a spectrogram
+        log_magnitude_mel_spectrograms: a tf.Tensor that has been comverted from a wav to a zero_padded tensor representing a
+         spectrogram
         label: an int meant to map from string label to int - ex: 'Happy' -> 0, for modeling maps will be made explicit
     
      Note: label is repeated for the output so it can be used in the .map() method'''
@@ -508,31 +610,12 @@ def wav_to_mels_spectrogram(filepath:str, sample_rate: int, label:int, frames:in
 
     ##Add zeros at the start IF the wav length < frames
     wav = tf.concat([zero_padding, wav], 0)
-
-    #use short time fourier transform
-    spectrogram = tf.signal.stft(wav,
-     frame_length = 320, ##This is fft_size
-     frame_step = 32 ## this is hop_size
-        ) #
-
-    #Get the magnitude of the signal (los direction)
-    spectrogram = tf.abs(spectrogram)
     
-    mel_filter = tf.signal.linear_to_mel_weight_matrix(
-        num_mel_bins=100,
-        num_spectrogram_bins = 257,
-        sample_rate=frames,
-        lower_edge_hertz=frames/100,
-        upper_edge_hertz=frames/2,
-        dtype=tf.dtypes.float32)
+    S = librosa.feature.melspectrogram(y=wav.numpy(), sr=sample_rate, n_mels=128, fmax=int(sample_rate/2))
+    
+    S_dB = librosa.power_to_db(S, ref = np.max)
 
-    mel_power_spectrogram = tf.matmul(tf.square(spectrogram), mel_filter)
-
-    log_magnitude_mel_spectrograms = power_to_db(mel_power_spectrogram)
-
-    log_magnitude_mel_spectrograms = tf.expand_dims(log_magnitude_mel_spectrograms, axis = 2)
-
-    return log_magnitude_mel_spectrograms, label
+    return tf.convert_to_tensor(S_dB), label
 
 def get_sample_spectrogram_subplot(labels_to_int:dict, files_to_keep:dict, index:int, sample_rate:int, frames:int, spec_type:str, artifacts_dir:str):
     """
@@ -571,10 +654,87 @@ def get_sample_spectrogram_subplot(labels_to_int:dict, files_to_keep:dict, index
 
         ax = plt.subplot(nrows, 1, iterator)
         ax.set_title(files_to_keep[key][index])
-        plt.imshow(tf.reshape(spec, [spec.shape[1], spec.shape[0]]))
+        librosa.display.specshow(spec.numpy(), sr=sample_rate, x_axis='time', y_axis='hz')
         iterator += 1
     plt.savefig(artifacts_dir+filename)
     plt.close()
 
     return
 
+def get_sample_augmented_spectrogram_subplot(filename:str, sample_rate: int, strech_rate_lt_one: float,strech_rate_gt_one: float,
+n_steps_pos: int,n_steps_neg: int,artifacts_dir:str):
+
+    wav = load_wav_output_mono_channel_file(filename, sample_rate)
+    filename=filename.split('data/')[-1].replace('/', '_')
+
+    savename = filename+' data augmentation spectrograms'
+
+    nrows = 6
+    plt.figure(figsize=(10, 30))
+    plt.tight_layout
+    plt.suptitle(savename)
+
+    ax = plt.subplot(nrows, 1, 1)
+    #use short time fourier transform
+    spectrogram = librosa.stft(wav.numpy(), hop_length=32, win_length=320) 
+    #Get the magnitude of the signal (los direction)
+    spectrogram =librosa.amplitude_to_db(abs(spectrogram))
+
+    librosa.display.specshow(spectrogram, sr=sample_rate, x_axis='time', y_axis='hz')
+    
+    ax.set_title('Normal spectrogram')
+    #-------------------------------
+    ax = plt.subplot(nrows, 1, 2)
+    #use short time fourier transform
+    spectrogram = librosa.stft(add_noise_to_wav(wav).numpy(), hop_length=32, win_length=320) 
+
+    #Get the magnitude of the signal (los direction)
+    spectrogram =librosa.amplitude_to_db(abs(spectrogram))
+    
+    librosa.display.specshow(spectrogram, sr=sample_rate, x_axis='time', y_axis='hz')
+    
+    ax.set_title('Noisy spectrogram')
+    #-------------------------------
+
+    ax = plt.subplot(nrows, 1, 3)
+    #use short time fourier transform
+    spectrogram = librosa.stft(stretch_wav(wav, strech_rate_lt_one).numpy(), hop_length=32, win_length=320) 
+    #Get the magnitude of the signal (los direction)
+
+    spectrogram =librosa.amplitude_to_db(abs(spectrogram))
+    librosa.display.specshow(spectrogram, sr=sample_rate, x_axis='time', y_axis='hz')
+
+    ax.set_title('stretched spectrogram with rate {}'.format(strech_rate_lt_one))
+    #-------------------------------
+    ax = plt.subplot(nrows, 1, 4)
+    #use short time fourier transform
+    spectrogram = librosa.stft(stretch_wav(wav, strech_rate_gt_one).numpy(), hop_length=32, win_length=320) 
+    #Get the magnitude of the signal (los direction)
+
+    spectrogram =librosa.amplitude_to_db(abs(spectrogram))
+    
+    librosa.display.specshow(spectrogram, sr=sample_rate, x_axis='time', y_axis='hz')
+
+    ax.set_title('stretched spectrogram with rate {}'.format(strech_rate_gt_one))
+    #-------------------------------
+    ax = plt.subplot(nrows, 1, 5)
+    #use short time fourier transform
+    spectrogram = librosa.stft(change_pitch(wav, sample_rate, n_steps_pos).numpy(), hop_length=32, win_length=320) 
+    #Get the magnitude of the signal (los direction)
+
+    librosa.display.specshow(spectrogram, sr=sample_rate, x_axis='time', y_axis='hz')
+
+    ax.set_title('pitched spectrogram with nsteps {}'.format(n_steps_pos))
+    #-------------------------------
+    ax = plt.subplot(nrows, 1, 6)
+    #use short time fourier transform
+    spectrogram = librosa.stft(change_pitch(wav, sample_rate, n_steps_neg).numpy(), hop_length=32, win_length=320) 
+    #Get the magnitude of the signal (los direction)
+
+    librosa.display.specshow(spectrogram, sr=sample_rate, x_axis='time', y_axis='hz')
+
+    ax.set_title('pitched spectrogram with nsteps {}'.format(n_steps_neg))
+    #-------------------------------
+
+    plt.savefig(artifacts_dir+savename+'.png')
+    plt.close()
