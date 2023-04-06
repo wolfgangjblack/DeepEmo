@@ -24,7 +24,9 @@ from utils.utils import (check_artifacts_dir,
                         get_sample_frame_df,
                         save_sample_frame_subplots,
                         get_label_to_int_mapping,
-                        get_sample_spectrogram_subplot)
+                        get_sample_spectrogram_subplot,
+                        get_sample_augmented_wav_subplot,
+                        get_sample_augmented_spectrogram_subplot)
 
 
 ##Below are things users can change
@@ -34,6 +36,11 @@ data_dir = '../../data/'
 artifacts_dir = './artifacts/'
 quantiles = [i/10 for i in range(1, 10)] ##use this to save a graph later
 quantile = 0.2
+index = 0
+stretch_rate_lt_one = 0.8
+stretch_rate_gt_one = 1.2
+n_steps_pos = 4
+n_steps_neg = -4
 #---------------------------------
 
 check_artifacts_dir(artifacts_dir)
@@ -72,6 +79,15 @@ labels_to_int = get_label_to_int_mapping(class_labels)
 for quant in [0.1, 0.5, 0.7,  0.8, 0.9]:
     sample_rate = int(sampleFrameDf[sampleFrameDf['quantile'] == quant]['min_sample_rates'].to_numpy())
     frames = int(sampleFrameDf[sampleFrameDf['quantile'] == quant]['frames_at_min'].to_numpy())
-    get_sample_spectrogram_subplot(labels_to_int, files_to_keep, 0, sample_rate, frames, 'spec', artifacts_dir)
-    get_sample_spectrogram_subplot(labels_to_int, files_to_keep, 0, sample_rate, frames, 'mels', artifacts_dir)
+    get_sample_spectrogram_subplot(labels_to_int, files_to_keep, index, sample_rate, frames, 'spec', artifacts_dir)
+    get_sample_spectrogram_subplot(labels_to_int, files_to_keep, index, sample_rate, frames, 'mels', artifacts_dir)
 
+
+##explore how augmenting the data changes the wav and spectrograms through plotting. Here we'll plot only base 
+# spectrograms, but for both wav and spectrogram data augmentation we'll explore speeding up and slowing down
+#  the audio files as well as increasing and decreasing the pitch. 
+for key in files_to_keep.keys():
+    get_sample_augmented_wav_subplot(files_to_keep[key][index], sample_rate_out,stretch_rate_lt_one, 
+    stretch_rate_gt_one, n_steps_pos, n_steps_neg, artifacts_dir)
+    get_sample_augmented_spectrogram_subplot(files_to_keep[key][index], sample_rate_out,stretch_rate_lt_one,
+    stretch_rate_gt_one, n_steps_pos, n_steps_neg, artifacts_dir)
