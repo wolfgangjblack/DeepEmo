@@ -24,6 +24,7 @@ from utils.utils import (check_artifacts_dir,
                         get_sample_frame_df,
                         save_sample_frame_subplots,
                         get_label_to_int_mapping,
+                        get_sample_wav_subplot,
                         get_sample_spectrogram_subplot,
                         get_sample_augmented_wav_subplot,
                         get_sample_augmented_spectrogram_subplot)
