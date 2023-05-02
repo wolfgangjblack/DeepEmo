@@ -16,7 +16,7 @@
 import os
 import matplotlib.pyplot as plt
 
-from utils.utils import generate_tf_dataset, get_input_shape, build_shallow_cnn
+from utils.utils import check_artifacts_dir, generate_tf_dataset, get_input_shape, build_shallow_cnn, build_transfer_inception_model, save_model_performance
 
 import tensorflow as tf
 
@@ -45,6 +45,13 @@ epochs = 10
 callback = tf.keras.callbacks.EarlyStopping(verbose=1, patience=4, restore_best_weights = True)
 
 ###script start
+
+##check artifacts dir and model dir
+#artifacts_dir will contain plots and any confusion matrix data
+#model_dir will contain model files
+check_artifacts_dir(artifacts_dir)
+check_artifacts_dir(model_dir)
+
 with open(files_to_keep_artifact) as f:
     files_to_keep = [line.rstrip() for line in f]
 
@@ -57,12 +64,11 @@ input_shape = get_input_shape(data)
 
 if model_type == 'shallow':
     model = build_shallow_cnn(input_shape, class_labels)
-
+elif model_type == 'transfer':
+    model = build_transfer_inception_model(input_shape, class_labels)
 ##Currently unsupported
-# elif model_type == 'transfer':
-#     model = transfer_inceptionV3(input_shape, class_labels)
 # elif model_type == 'visTransformer':
-#     model = build_visTransformer(input_shape, class_labels)
+#     model = build_visTransformer_model(input_shape, class_labels)
 
 model.compile(
         optimizer=optimizer,
@@ -78,3 +84,8 @@ history = model.fit(train,
                  epochs = epochs,
                  validation_data = val,
     callbacks=callback)
+
+save_model_performance(history, model_type, artifacts_dir)
+
+##Save Model
+model.save(model_dir + '_model.h5')
