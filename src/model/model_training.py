@@ -5,10 +5,8 @@
 # 2. validation confusion matrix
 
 # Run Instructions:  
-# This script requires the modifcation of a config, found in relative path ./configs/
-# the change the config, see ./configs/training_config.py - a script with detailed explanations for each
-#  parameter after any changes in the config script, run the main.py script which will call first the config
-#  script then run this model_training.py script
+# This script does not require the use of a config, instead users are expected to change this file directly
+# this is intention as the users should be aware of what they're training and the base script used to train the models
 #---------------------------------
 
 
@@ -19,7 +17,6 @@ import matplotlib.pyplot as plt
 from utils.utils import check_artifacts_dir, generate_tf_dataset, get_input_shape, build_shallow_cnn, build_transfer_inception_model, save_model_performance
 
 import tensorflow as tf
-
 
 #Note: This is in development and will be abstracted in the future.
 ## *future config params
@@ -66,9 +63,6 @@ if model_type == 'shallow':
     model = build_shallow_cnn(input_shape, class_labels)
 elif model_type == 'transfer':
     model = build_transfer_inception_model(input_shape, class_labels)
-##Currently unsupported
-# elif model_type == 'visTransformer':
-#     model = build_visTransformer_model(input_shape, class_labels)
 
 model.compile(
         optimizer=optimizer,
