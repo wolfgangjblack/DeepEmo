@@ -25,7 +25,7 @@ import tensorflow as tf
 ## *future config params
 ##paths
 files_to_keep_artifact = '../eda/artifacts/files_to_keep.txt'
-data_dir = '../../data'
+data_dir = '../data/emotions/'
 artifacts_dir = './artifacts/'
 
 #dataset stuffs
@@ -35,13 +35,13 @@ batch_size = 32
 spec_type = 'spec'
 
 ##model stuffs
-model_type = 'shallow'
+model_type = 'transfer'
 model_dir = './saved_models/'+model_type+'/'
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=.001)
 model_metrics = [tf.keras.metrics.SparseCategoricalAccuracy(), tf.keras.metrics.SparseCategoricalCrossentropy()]
 split = 0.75
-epochs = 10
+epochs = 25
 callback = tf.keras.callbacks.EarlyStopping(verbose=1, patience=4, restore_best_weights = True)
 
 ###script start
@@ -88,4 +88,4 @@ history = model.fit(train,
 save_model_performance(history, model_type, artifacts_dir)
 
 ##Save Model
-model.save(model_dir + '_model.h5')
+model.save(model_dir +model_type+'_'+spec_type+ '_model.h5')
