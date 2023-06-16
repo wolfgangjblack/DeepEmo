@@ -5,24 +5,24 @@
 # 2. validation confusion matrix
 
 # Run Instructions:  
-# This script does not require the use of a config, instead users are expected to change this file directly
-# this is intention as the users should be aware of what they're training and the base script used to train the models
+# This script requires the modifcation of a config, found in relative path ./configs/
+# the change the config, see ./configs/training_config.py - a script with detailed explanations for each
+#  parameter after any changes in the config script, run the main.py script which will call first the config
+#  script then run this model_training.py script
 #---------------------------------
 
 
 ##imports
 import os
 import matplotlib.pyplot as plt
-
-from utils.utils import check_artifacts_dir, generate_tf_dataset, get_input_shape, build_shallow_cnn, build_transfer_inception_model, save_model_performance
-
+import numpy as np
 import tensorflow as tf
 
-#Note: This is in development and will be abstracted in the future.
-## *future config params
+from utils.utils import check_artifacts_dir, generate_tf_dataset, get_input_shape, build_shallow_cnn, build_transfer_inception_model, save_model_performance, get_preds_array, save_confusion_matrix
+
 ##paths
 files_to_keep_artifact = '../eda/artifacts/files_to_keep.txt'
-data_dir = '../data/emotions/'
+data_dir = '../../data/'
 artifacts_dir = './artifacts/'
 
 #dataset stuffs
@@ -32,14 +32,14 @@ batch_size = 32
 spec_type = 'spec'
 
 ##model stuffs
-model_type = 'transfer'
+model_type = 'shallow'
 model_dir = './saved_models/'+model_type+'/'
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=.001)
 model_metrics = [tf.keras.metrics.SparseCategoricalAccuracy(), tf.keras.metrics.SparseCategoricalCrossentropy()]
-split = 0.75
-epochs = 25
-callback = tf.keras.callbacks.EarlyStopping(verbose=1, patience=4, restore_best_weights = True)
+split = 0.9
+epochs = 20
+callback = tf.keras.callbacks.EarlyStopping(verbose=1, patience=7, restore_best_weights = True)
 
 ###script start
 
@@ -63,6 +63,9 @@ if model_type == 'shallow':
     model = build_shallow_cnn(input_shape, class_labels)
 elif model_type == 'transfer':
     model = build_transfer_inception_model(input_shape, class_labels)
+##Currently unsupported
+# elif model_type == 'visTransformer':
+#     model = build_visTransformer_model(input_shape, class_labels)
 
 model.compile(
         optimizer=optimizer,
@@ -83,3 +86,11 @@ save_model_performance(history, model_type, artifacts_dir)
 
 ##Save Model
 model.save(model_dir +model_type+'_'+spec_type+ '_model.h5')
+
+#Get validation y and model predictions
+y_true = np.concatenate([y for x, y in val], axis = 0)
+preds = model.predict(val)
+y_pred = get_preds_array(preds)
+
+## Save Validation Confusion Matrix
+save_confusion_matrix(y_true, y_pred, class_labels, model_type, artifacts_dir)

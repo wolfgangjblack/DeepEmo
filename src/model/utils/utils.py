@@ -351,3 +351,19 @@ def save_model_performance(history, model_type:str, savepath = './artifacts/'):
     fig.savefig(savepath+model_type+'_training_metrics.png')
 
     return
+
+def get_preds_array(raw_preds:np.ndarray) -> np.ndarray:
+    preds = [np.argmax(i) for i in raw_preds]
+    return preds
+
+def save_confusion_matrix(y_true: np.ndarray, y_preds: np.ndarray, class_labels_as_strs: list, model_type: str, artifacts_dir: str) -> None:
+    confusion_mtx = tf.math.confusion_matrix(y_true, y_preds)
+    fig = plt.figure(figsize=(10,8))
+    sns.heatmap(confusion_mtx,
+                xticklabels = class_labels_as_strs,
+                yticklabels = class_labels_as_strs,
+                annot = True, fmt = 'g')
+    plt.xlabel("Prediction")
+    plt.ylabel("Label")
+    fig.savefig(artifacts_dir+model_type+'_confusion_matrix.jpg')
+    return
