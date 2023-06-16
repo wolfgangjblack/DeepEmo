@@ -38,10 +38,10 @@ Since varying the resampling rate changes how long the files are, we can use thi
 ![alt_text](https://github.com/wolfgangjblack/DeepEmo/blob/main/src/eda/artifacts/sample_frame_subplots.png)
 
 Finally once a resampling rate and frame length have been decided on, we can generate spectrograms which will be used in the model for training/scoring. The figure below is an example of the types of spectrogram subplots generated in eda.py:
+![alt text
+(https://github.com/wolfgangjblack/DeepEmo/blob/main/src/eda/artifacts/sample_spectrogram_subplot_with_index_0_24414_sample_rate_and_58837_frames.png)
 
-![alt text](https://github.com/wolfgangjblack/DeepEmo/blob/main/src/eda/artifacts/sample_spectrogram_subplot_with_index_0_24414_sample_rate_and_58837_frames.png)
 For a visual representation of how varying the resampling rate, see the image below:
-
 ![alt text](https://github.com/wolfgangjblack/DeepEmo/blob/main/src/eda/artifacts/Angry_1022_ITS_ANG_XX.wav%20data%20augmentation%20spectrograms.png)
 
 To generate the model, use /src/model/model_training.py. Users should open the script and pay attention to the parameters used in training, lines: 23-36. This script generates either a shallow CNN or pulls down the inceptionV3 trained on imagenet. The transfer learning model only retrains the output layer. This script uses the spectrogram/mel spectrogram transformation on the audio .wav files to generate images for the CNN. 
