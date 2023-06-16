@@ -19,6 +19,20 @@ import pandas as pd
 import numpy as np
 import pandas as pd
 
+def check_artifacts_dir(artifacts_dir:str ):
+    '''
+    This function checks if there is an artifacts dir in our root dir, 
+    if not it'll create the aritifacts dir to prevent an error
+    Args:
+        artifacts_dir: a str representing a path -ex './artifacts/'
+    '''
+    try:
+         os.listdir(artifacts_dir)
+    except FileNotFoundError:
+        os.mkdir(artifacts_dir)
+
+    return 
+
 def generate_tf_dataset(files_to_keep:list, class_labels:list, sample_rate:int, frames:int, batch_size: int, spec_type = 'spec'):
     '''
     Prepares a tf dataset object for use in a model. This function provides a data pipeline
@@ -297,3 +311,59 @@ def build_shallow_cnn(input_shape: tuple, class_labels: list):
     model.add(Dense(len(class_labels), activation = 'softmax'))
 
     return model
+
+def build_transfer_inception_model(input_shape, class_labels):
+    # 1.create the base model but omit the classification layer
+    base_model = InceptionV3(weights='imagenet', include_top=False)
+    # 2.freeze the convolutional base (i.e. retain the weights)
+    base_model.trainable = False
+
+    # 3.add classification head and prediction layer
+    global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
+    prediction_layer = tf.keras.layers.Dense(len(class_labels), activation='softmax')
+
+    # 4.build the model
+    inputs = tf.keras.Input(shape=(input_shape[0],input_shape[1],1))
+    x = tf.keras.layers.Conv2D(3,(3,3), padding = 'same')(inputs)
+    x = base_model(x, training=False)
+    x = global_average_layer(x)
+    outputs = prediction_layer(x)
+    transfer_model = tf.keras.Model(inputs, outputs)
+
+    return transfer_model
+
+def save_model_performance(history, model_type:str, savepath = './artifacts/'):
+    metrics = history.history
+    fig = plt.figure(figsize=(16,6))
+    plt.subplot(1,2,1)
+    plt.plot(history.epoch, metrics['loss'], metrics['val_loss'])
+    plt.legend(['loss', 'val_loss'])
+    plt.ylim([0, max(plt.ylim())])
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss [CrossEntropy]')
+
+    plt.subplot(1,2,2)
+    plt.plot(history.epoch, 100*np.array(metrics['sparse_categorical_accuracy']), 100*np.array(metrics['val_sparse_categorical_accuracy']))
+    plt.legend(['accuracy', 'val_accuracy'])
+    plt.ylim([0, 100])
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy [%]')
+    fig.savefig(savepath+model_type+'_training_metrics.png')
+
+    return
+
+def get_preds_array(raw_preds:np.ndarray) -> np.ndarray:
+    preds = [np.argmax(i) for i in raw_preds]
+    return preds
+
+def save_confusion_matrix(y_true: np.ndarray, y_preds: np.ndarray, class_labels_as_strs: list, model_type: str, artifacts_dir: str) -> None:
+    confusion_mtx = tf.math.confusion_matrix(y_true, y_preds)
+    fig = plt.figure(figsize=(10,8))
+    sns.heatmap(confusion_mtx,
+                xticklabels = class_labels_as_strs,
+                yticklabels = class_labels_as_strs,
+                annot = True, fmt = 'g')
+    plt.xlabel("Prediction")
+    plt.ylabel("Label")
+    fig.savefig(artifacts_dir+model_type+'_confusion_matrix.jpg')
+    return
